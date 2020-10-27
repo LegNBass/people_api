@@ -5,6 +5,7 @@ services:
     build: ./app
     volumes:
       - ./app:/app
+      - ./data:/data
     ports:
       - 8080:5000
     environment:
