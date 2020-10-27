@@ -1,52 +1,29 @@
 import os
-import json
 
 from flask import Flask
-from sqlalchemy import create_engine, orm
 
-from people import Base, People
-
-
-app = Flask(__name__)
+from database import db
+from views.person import people
 
 
-@app.route('/hello/<string:name>', methods=['GET'])
-def hello(name):
-    return f'Hello {name}'
+def create_app():
+    app = Flask(__name__)
+    app.config['DEBUG'] = os.environ.get('DEBUG', False)
+    app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:////data/people.db3"
+    db.init_app(app)
+    app.register_blueprint(people, url_prefix='/people')
+    return app
 
 
-@app.route('/people', methods=['GET'])
-def get_people():
-    return json.dumps([
-       i.as_dict()
-       for i in app.sesh.query(People).all()
-    ])
-
-
-@app.route('/people', methods=['POST'])
-def add_person(**kwargs):
-    new_person = People(**kwargs)
-    app.sesh.add(new_person)
-    app.sesh.commit()
-
-    return "OK"
+def setup_database(app):
+    with app.app_context():
+        db.create_all()
 
 
 if __name__ == '__main__':
-    print(People)
-
-    engine = create_engine('sqlite:////data/people.db3')
-    Base.metadata.create_all(engine)
-
-    Base.metadata.bind = engine
-
-    DBsession = orm.sessionmaker()
-    DBsession.bind = engine
-    session = DBsession()
-
-    app.sesh = session
-
+    app = create_app()
+    if not os.path.isfile('/data/people.db3'):
+        setup_database(app)
     app.run(
-        host='0.0.0.0',
-        debug=os.environ.get('DEBUG', False)
+        host='0.0.0.0'
     )
