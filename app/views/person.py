@@ -100,24 +100,34 @@ def get_person(_id):
     The version number is optional and included
     in the query string as "version"
     """
-    ret = PersonVersion.query.filter(
-        PersonVersion.person_id == _id,
-    ).order_by(
-        PersonVersion.version.desc()
-    ).first_or_404().as_dict()
+    if version := request.args.get('version'):
+        try:
+            version = int(version)
+        except ValueError:
+            return {"message": "Bad query param"}, 400
+        ret = PersonVersion.query.filter(
+            PersonVersion.person_id == _id,
+            PersonVersion.version == version
+        ).first_or_404()
+    else:
+        ret = PersonVersion.query.filter(
+            PersonVersion.person_id == _id,
+        ).order_by(
+            PersonVersion.version.desc()
+        ).first_or_404()
 
-    if ret['deleted']:
+    if ret.deleted:
         return {"deleted": True}, 404
-    del(ret['deleted'])
+    del(ret.deleted)
 
-    return ret
+    return ret.as_dict()
 
 
 @people.route('/add', methods=['POST'])
 def add_person():
     json_args = request.get_json()
     if not json_args:
-        return "{}", 400
+        return {"message": "Bad request"}, 400
 
     # Create the Person record first
     # TODO: Wrap both cretes in a transaction
@@ -152,7 +162,7 @@ def update_person(_id):
     """
     json_args = request.get_json()
     if not json_args:
-        return "{}", 400
+        return {"message": "Bad request"}, 400
 
     # Get the existing record to base the update on
     previous_version = PersonVersion.query.filter(
