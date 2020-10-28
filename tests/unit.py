@@ -1,6 +1,8 @@
 import json
 import requests
 
+# TODO: Add negative tests and error handling tests
+
 
 class TestAPI:
     base_url = "http://localhost:8080"
