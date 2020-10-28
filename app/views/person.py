@@ -102,12 +102,14 @@ def get_person(_id):
     """
     ret = PersonVersion.query.filter(
         PersonVersion.person_id == _id,
-        PersonVersion.deleted is False
     ).order_by(
         PersonVersion.version.desc()
     ).first_or_404().as_dict()
 
+    if ret['deleted']:
+        return {"deleted": True}, 404
     del(ret['deleted'])
+
     return ret
 
 
@@ -115,7 +117,7 @@ def get_person(_id):
 def add_person():
     json_args = request.get_json()
     if not json_args:
-        return "Bad request", 400
+        return "{}", 400
 
     # Create the Person record first
     # TODO: Wrap both cretes in a transaction
@@ -150,7 +152,7 @@ def update_person(_id):
     """
     json_args = request.get_json()
     if not json_args:
-        return "Bad Request", 400
+        return "{}", 400
 
     # Get the existing record to base the update on
     previous_version = PersonVersion.query.filter(
@@ -158,6 +160,9 @@ def update_person(_id):
     ).order_by(
         PersonVersion.version.desc()
     ).first_or_404()
+
+    if previous_version.deleted:
+        return {"deleted": True}, 404
 
     # Increment the version
     new_version_number = previous_version.version + 1
@@ -191,6 +196,12 @@ def delete_person(_id):
     ).order_by(
         PersonVersion.version.desc()
     ).first_or_404()
+
+    if previous_version.deleted:
+        return {
+            "person_id": previous_version.person_id,
+            "deleted": previous_version.deleted
+        }
 
     # Increment the version
     new_version_number = previous_version.version + 1
