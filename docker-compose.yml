@@ -1,0 +1,12 @@
+version: '0'
+services:
+  people_api:
+    container_name: people_api
+    build: ./app
+    volumes:
+      - ./app:/app
+      - ./data:/data
+    ports:
+      - 8080:5000
+    environment:
+      DEBUG: 0
