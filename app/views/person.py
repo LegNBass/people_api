@@ -61,6 +61,7 @@ class PersonVersion(db.Model):
 
 
 @people.route('')
+@people.route('/')
 def get_people():
     """
     Returns the most recent version for each person
@@ -93,6 +94,7 @@ def get_people():
 
 
 @people.route('/<string:_id>')
+@people.route('/<string:_id>/')
 def get_person(_id):
     """
     Returns a single version of a single person.
@@ -108,22 +110,23 @@ def get_person(_id):
         ret = PersonVersion.query.filter(
             PersonVersion.person_id == _id,
             PersonVersion.version == version
-        ).first_or_404()
+        ).first_or_404().as_dict()
     else:
         ret = PersonVersion.query.filter(
             PersonVersion.person_id == _id,
         ).order_by(
             PersonVersion.version.desc()
-        ).first_or_404()
+        ).first_or_404().as_dict()
 
-    if ret.deleted:
+    if ret['deleted']:
         return {"deleted": True}, 404
-    del(ret.deleted)
+    del(ret['deleted'])
 
-    return ret.as_dict()
+    return ret
 
 
 @people.route('/add', methods=['POST'])
+@people.route('/add/', methods=['POST'])
 def add_person():
     json_args = request.get_json()
     if not json_args:
@@ -149,12 +152,14 @@ def add_person():
     db.session.add(first_version)
     db.session.commit()
 
-    del(first_version.deleted)
+    ret = first_version.as_dict()
+    del(ret['deleted'])
 
-    return first_version.as_dict()
+    return ret
 
 
 @people.route('/update/<int:_id>', methods=['PATCH'])
+@people.route('/update/<int:_id>/', methods=['PATCH'])
 def update_person(_id):
     """
     Adds a new version of a person with potentially different
@@ -195,6 +200,7 @@ def update_person(_id):
 
 
 @people.route('/delete/<int:_id>', methods=['DELETE'])
+@people.route('/delete/<int:_id>/', methods=['DELETE'])
 def delete_person(_id):
     """
     Adds a new version with NULL values for the person

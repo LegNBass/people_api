@@ -9,4 +9,4 @@ services:
     ports:
       - 8080:5000
     environment:
-      - DEBUG=true
+      DEBUG: 0
