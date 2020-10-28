@@ -77,4 +77,4 @@ class TestAPI:
             f"{self.base_url}/people"
         )
         assert resp.status_code == 200
-        assert len(json.loads(resp.text)) > 1
+        assert len(json.loads(resp.text)) >= 1
