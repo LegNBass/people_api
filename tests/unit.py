@@ -8,7 +8,7 @@ class TestAPI:
     person_id = None
 
     def test_add_update_delete_person(self):
-        # Add a perosn
+        # Add a person
         resp = requests.post(
             f"{self.base_url}/people/add",
             json={
@@ -25,7 +25,7 @@ class TestAPI:
         # Save the person ID
         person_id = text['person_id']
 
-        # Now update the perspon
+        # Now update the person
         resp = requests.patch(
             f"{self.base_url}/people/update/{person_id}",
             json={
@@ -36,6 +36,15 @@ class TestAPI:
         payload = json.loads(resp.text)
         assert payload["middle_name"] == "'Cherry'"
         assert payload['version'] == 2
+
+        # Get the previous version
+        resp = requests.get(
+            f"{self.base_url}/people/{person_id}?version=1"
+        )
+        payload = json.loads(resp.text)
+        assert payload['first_name'] == 'Jerry'
+        assert payload['middle_name'] is None
+        assert payload['version'] == 1
 
         # Now delete the person
         resp = requests.delete(
