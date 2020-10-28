@@ -43,12 +43,11 @@ class PersonVersion(db.Model):
         db.ForeignKey('person.id'),
         nullable=False
     )
-
     first_name = db.Column(db.String(255), nullable=False)
     middle_name = db.Column(db.String(255))
-    last_name = db.Column(db.String(2355))
-    email = db.Column(db.String(255))
-    age = db.Column(db.Integer)
+    last_name = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(255), nullable=False)
+    age = db.Column(db.Integer, nullable=False)
 
     version = db.Column(db.Integer, nullable=False)
 
@@ -61,17 +60,23 @@ class PersonVersion(db.Model):
 
 @people.route('')
 def get_people():
+    """
+    Returns the most recent version for each person
+    """
     return json.dumps([
         row._asdict()
         for row in db.session.query(
             PersonVersion.person_id,
             PersonVersion.first_name,
+            PersonVersion.middle_name,
+            PersonVersion.last_name,
+            PersonVersion.email,
+            PersonVersion.age,
             PersonVersion.version,
             db.func.max(PersonVersion.version)
         ).group_by(
             PersonVersion.person_id,
             PersonVersion.first_name,
-            PersonVersion.version
         ).order_by(
             PersonVersion.person_id
         ).all()
@@ -80,6 +85,12 @@ def get_people():
 
 @people.route('/<string:_id>')
 def get_person(_id):
+    """
+    Returns a single version of a single person.
+
+    The version number is optional and included
+    in the query string as "version"
+    """
     return PersonVersion.query.filter(
         PersonVersion.person_id == _id
     ).order_by(
@@ -101,10 +112,47 @@ def add_person():
     # Now that we have an ID we can make the first version
     first_version = PersonVersion(
         person_id=new_person.id,
-        first_name=json_args.get("first_name"),
+        first_name=json_args["first_name"],
+        middle_name=json_args.get('middle_name'),
+        last_name=json_args["last_name"],
+        email=json_args["email"],
+        age=json_args["age"],
         version=1
     )
     db.session.add(first_version)
     db.session.commit()
 
-    return new_person.as_dict()
+    return first_version.as_dict()
+
+
+@people.route('/update/<int:_id>', methods=['PATCH'])
+def update_person(_id):
+    json_args = request.get_json()
+    if not json_args:
+        return "Bad Request", 400
+
+    # Get the existing record to base the update on
+    previous_version = PersonVersion.query.filter(
+        PersonVersion.person_id == _id
+    ).order_by(
+        PersonVersion.version.desc()
+    ).first_or_404()
+
+    # Increment the version
+    new_version_number = previous_version.version + 1
+
+    # Copy the object
+    new_version = PersonVersion(
+        **previous_version.as_dict()
+    )
+
+    for col, val in json_args.items():
+        setattr(new_version, col, val)
+
+    new_version.version = new_version_number
+    del(new_version.id)
+
+    db.session.add(new_version)
+    db.session.commit()
+
+    return new_version.as_dict()
