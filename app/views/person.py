@@ -2,8 +2,11 @@
 This file contains the definition of the Person object
 """
 import json
-from database import db
+
+from flask import request
 from flask.blueprints import Blueprint
+
+from database import db
 
 
 people = Blueprint('people', __name__)
@@ -41,13 +44,19 @@ class PersonVersion(db.Model):
         nullable=False
     )
 
-    first_name = db.Column(db.String(255))
+    first_name = db.Column(db.String(255), nullable=False)
     middle_name = db.Column(db.String(255))
     last_name = db.Column(db.String(2355))
     email = db.Column(db.String(255))
     age = db.Column(db.Integer)
 
     version = db.Column(db.Integer, nullable=False)
+
+    def as_dict(self):
+        return {
+            col.name: getattr(self, col.name)
+            for col in self.__table__.columns
+        }
 
 
 @people.route('')
@@ -75,11 +84,15 @@ def get_person(_id):
         PersonVersion.person_id == _id
     ).order_by(
         PersonVersion.version.desc()
-    ).first_or_404()
+    ).first_or_404().as_dict()
 
 
 @people.route('/add', methods=['POST'])
 def add_person():
+    json_args = request.get_json()
+    if not json_args:
+        return "Bad request", 400
+
     # Create the Person record first
     new_person = Person()
     db.session.add(new_person)
@@ -88,7 +101,7 @@ def add_person():
     # Now that we have an ID we can make the first version
     first_version = PersonVersion(
         person_id=new_person.id,
-        first_name='Bob',
+        first_name=json_args.get("first_name"),
         version=1
     )
     db.session.add(first_version)
